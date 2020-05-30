@@ -101,10 +101,19 @@ def new_moves():
 def update_scores(row, col, player_score):
     row_scores[line] += player_score
     column_scores[col] += player_score
-    grid[line,col]=player_score
 
-    if abs(row_scores[line]) == grid_size or abs(column_scores[col]) == grid_size:
+    # in main diagonal
+    if row == col:
+        diagonal_scores[0] += player_score
+    
+    # in secondary diagonal
+    if row == grid_size-col-1:
+        diagonal_scores[1] += player_score
+
+    # check if it's a winning move
+    if abs(row_scores[line]) == grid_size or abs(column_scores[col]) == grid_size or grid_size in abs(diagonal_scores):
         return True
+
     else : return False
 
 
@@ -118,7 +127,7 @@ grid_size = 3
 grid = np.zeros((grid_size,grid_size))
 row_scores = np.zeros(grid_size)
 column_scores = np.zeros(grid_size)
-diagonal_scores = np.zeros(grid_size)
+diagonal_scores = np.zeros(2)
 human_playing = False
 empty_cells = []
 
@@ -131,12 +140,16 @@ while True:
     if(human_playing):
         print('\nYour turn! choose wisely!\n')
         player_score=1
-        input_text='\nEnter line[0-'+str(grid_size-1)+']: '
-        line = int(input(input_text))
-        input_text='\nEnter column[0-'+str(grid_size-1)+']: '
-        column = int(input(input_text))
-        empty_cells.remove([line, column])
-
+        while True:
+            input_text='\nEnter line[0-'+str(grid_size-1)+']: '
+            line = int(input(input_text))
+            input_text='\nEnter column[0-'+str(grid_size-1)+']: '
+            column = int(input(input_text))
+            if [line, column] in empty_cells:
+                empty_cells.remove([line, column])
+                break
+            else:
+                print('\nInvalid move, choose again.')
         
     else:
         print('Computer turn! thinking...!')
@@ -162,7 +175,7 @@ elif not new_moves():
     print('No more moves.')
 
 else:
-    print('qq ta aconseseno')
+    print('qq ta conteseno')
 
     # current_state = State(grid, new_empty_cells )
     # minimax_decision(current_state)
