@@ -1,8 +1,12 @@
 import numpy as np
+import sys
 
-def print_board():
-    print('\n')
+
+def print_board(state):
+    grid = state.grid
+
     print(grid)
+    print(state.score)
     print('\n')
     for row in grid:
         for cell in row:
@@ -15,88 +19,96 @@ def print_board():
         print('\n')
     print('\n\n')
 
+
 def minimax_decision(state):
-        score = max_value(state)
-        return state.search_action(score)
+    score = max_value(state)
+    return state.search_action(score)
 
-# def max_value(state):
-#     # if terminal_test(state):
-#         return state.utility
 
-#     # largest negative int 
-#     score = -sys.maxint - 1
+def max_value(state):
+    if terminal(state):
+        return state.score
 
-#     for s in state.successors:
-#         score = max(u, min_value(s))
-#     return score
+    # largest negative int
+    score = -sys.maxsize - 1
 
-# def min_value(state):
-#     if terminal_test(state):
-#         return state.utility
+    for next_move in state.moves:
+        score = max(score, min_value(next_move))
+    return score
 
-#     # larges positive int
-#     score = sys.maxint()
 
-#     for s in state.successors():
-#         score = min(u, max_value(s))
-#         action = s
-#     return score
+def min_value(state):
+    if terminal(state):
+        return state.score
+
+    # larges positive int
+    score = sys.maxsize
+
+    for next_move in state.moves:
+        score = min(score, max_value(next_move))
+    return score
+
+
+def terminal(state):
+    return abs(state.score) == grid_size or len(state.moves) == 0
 
 
 class State():
-    def __init__(self, grid, empty_cells):
+    def __init__(self, grid, empty_cells, player_score):
         self.grid = grid
-        self.utility = self.set_utility()
-        self.successors_list = self.successors()
         self.empty_cells = empty_cells
+        self.player_score = player_score
+        self.score = self.set_score()
+        self.moves = self.successors()
 
-    def search_action(self, u):
-        for s in self.successors_list:
-            if self.utility == u:
-                return s
+    def search_action(self, value):
+        for state in self.moves:
+            if state.score == value:
+                return state
         return False
 
-    def set_utility(self):
-        row_occurrences_x = []
-        column_occurrences_x = []
-        diagonal_occurrences_x = []
-        row_occurrences_o = []
-        column_occurrences_o = []
-        diagonal_occurrences_o = []
+    def set_score(self):
+        scores = []
+        scores.append(np.sum(grid, axis=0))
+        scores.append(np.sum(grid, axis=1))
+        scores.append([np.sum(np.diagonal(grid)),
+                      np.sum(np.diagonal(np.fliplr(grid)))])
 
+        s=0
+        for axis in scores:
+            max_v = max(axis)
+            min_v = min(axis)
+            
+            if max_v > abs(min_v) and max_v > abs(s) : s = max(s, max_v)
+            else : s = min(s, min_v)
+        return s
 
-        for i in range(grid_size):
-            row_occurrences_x.append(sum(grid[i,:] == x_score))
-            column_occurrences_x.append(sum(grid[:,i] == x_score))
-            diagonal_occurrences_x.append(np.count_nonzero(self.grid.diagonal() == b'X', axis=0))
-
-            row_occurrences_o.append(sum(self.grid[i,:] == o_score))
-            column_occurrences_o.append(np.count_nonzero(self.grid == b'O', axis = 0))
-            diagonal_occurrences_o.append(np.count_nonzero(self.grid.diagonal() == b'O', axis=0))
-
-        if 3 in row_occurrences_x or 3 in column_occurrences_x or 3 in diagonal_occurrences_x:
-            return 1
-        elif 3 in row_occurrences_o:
-            return -1
-        else:
-            return 0
-        
-     
     def successors(self):
-        self.successors_list = []
-        for i in range(len(empty_cells)):
-            line = empty_cells[i][0]
-            column = empty_cells[i][1]
+        new_empty_cells = []
+        new_grid = np.zeros((grid_size, grid_size))
+        next_moves = []
+        if np.sum(grid) > 0:
+            player = -1
+        else:
+            player = 1
+        for cell in self.empty_cells:
+            
+            row = cell[0]
+            col = cell[1]
 
-            new_grid = grid
-            new_grid[line, column]  = 'a'
-            new_empty_cells = empty_cells
-            new_state = State(new_grid, new_empty_cells.remove([empty_cells[i][0], empty_cells[i][1]]))
-            self.successors_list.append(new_state)
-        return self.successors_list
+            new_grid[:] = self.grid
+            new_grid[row, col] = player
+            new_empty_cells[:] = self.empty_cells
+            new_empty_cells.remove([row, col])
+            new_state = State(new_grid, new_empty_cells, player)
+            next_moves.append(new_state)
 
-def new_moves():
-    return not empty_cells == []
+        return next_moves
+
+
+def new_moves(state):
+    return len(state.moves) != 0
+
 
 def update_scores(row, col, player_score):
     row_scores[line] += player_score
@@ -105,7 +117,7 @@ def update_scores(row, col, player_score):
     # in main diagonal
     if row == col:
         diagonal_scores[0] += player_score
-    
+
     # in secondary diagonal
     if row == grid_size-col-1:
         diagonal_scores[1] += player_score
@@ -114,68 +126,65 @@ def update_scores(row, col, player_score):
     if abs(row_scores[line]) == grid_size or abs(column_scores[col]) == grid_size or grid_size in abs(diagonal_scores):
         return True
 
-    else : return False
+    else:
+        return False
 
 
 def populate_empty_cells():
     for row in range(grid_size):
         for col in range(grid_size):
-            empty_cells.append([row, col])
+            current_state.empty_cells.append([row, col])
 
 
 grid_size = 3
-grid = np.zeros((grid_size,grid_size))
+grid = np.zeros((grid_size, grid_size))
 row_scores = np.zeros(grid_size)
 column_scores = np.zeros(grid_size)
 diagonal_scores = np.zeros(2)
+current_state = State(grid, [], 1)
 human_playing = False
-empty_cells = []
 
 populate_empty_cells()
 
 while True:
-    print_board()
+    print_board(current_state)
     human_playing = not human_playing
+    empty_cells = current_state.empty_cells
+    grid = current_state.grid
 
     if(human_playing):
         print('\nYour turn! choose wisely!\n')
-        player_score=1
+        player_score = -1
         while True:
-            input_text='\nEnter line[0-'+str(grid_size-1)+']: '
+            input_text = '\nEnter line[0-'+str(grid_size-1)+']: '
             line = int(input(input_text))
-            input_text='\nEnter column[0-'+str(grid_size-1)+']: '
+            input_text = '\nEnter column[0-'+str(grid_size-1)+']: '
             column = int(input(input_text))
             if [line, column] in empty_cells:
                 empty_cells.remove([line, column])
+                grid[line, column] = player_score
+                current_state = State(grid, empty_cells, player_score)
                 break
             else:
                 print('\nInvalid move, choose again.')
-        
+
     else:
-        print('Computer turn! thinking...!')
-        player_score=-1
-        target = empty_cells.pop()
-        line = target[0]
-        column = target[1]
-        print('\n['+ str(line) + ',' + str(column)  +']:')
-    
-    grid[line, column] = player_score
-    winner = update_scores(line, column, player_score)
+        print('My turn! let me think...')
+        player_score = 1
+        current_state = minimax_decision(current_state)
 
-    if not new_moves() or winner: break
+    if not new_moves(current_state) or terminal(current_state):
+        break
 
-print_board()
-
-if winner:
+print_board(current_state)
+ 
+if not new_moves(current_state):
+    print('No more moves.')
+else:
     if(human_playing):
         print('You won!')
     else:
         print('You lost!')
-elif not new_moves():
-    print('No more moves.')
-
-else:
-    print('qq ta conteseno')
 
     # current_state = State(grid, new_empty_cells )
     # minimax_decision(current_state)
